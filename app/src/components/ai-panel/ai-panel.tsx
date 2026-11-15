@@ -225,21 +225,26 @@ function Sources({ sources, onShow }: { sources: Source[]; onShow: (doc: string,
   )
 }
 
-function FeedbackRow({ question, onNo }: { question: string; onNo: () => void }) {
-  const [answer, setAnswer] = React.useState<"yes" | null>(null)
+const ACK = "Thanks for your feedback."
+
+function FeedbackAck() {
+  // Replaces the feedback row after a completed answer; announced politely.
+  return (
+    <p role="status" className="text-sm text-muted-foreground">
+      {ACK}
+    </p>
+  )
+}
+
+function FeedbackRow({ question, onYes, onNo }: { question: string; onYes: () => void; onNo: () => void }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <p className="text-sm text-muted-foreground">{question}</p>
       <div className="flex gap-2">
-        <Button
-          variant={answer === "yes" ? "default" : "outline"}
-          size="sm"
-          aria-pressed={answer === "yes"}
-          onClick={() => setAnswer("yes")}
-        >
+        <Button variant="outline" size="sm" onClick={onYes}>
           Yes
         </Button>
-        <Button variant="outline" size="sm" aria-pressed={false} onClick={onNo}>
+        <Button variant="outline" size="sm" onClick={onNo}>
           No
         </Button>
       </div>
@@ -247,7 +252,8 @@ function FeedbackRow({ question, onNo }: { question: string; onNo: () => void })
   )
 }
 
-function FeedbackForm({ onDone }: { onDone: () => void }) {
+/** High and low confidence, after "No". */
+function FeedbackForm({ onSend, onSkip }: { onSend: () => void; onSkip: () => void }) {
   const id = React.useId()
   const options = ["The certificate does not say that", "This is not relevant to this product", "Something else"]
   return (
@@ -263,12 +269,51 @@ function FeedbackForm({ onDone }: { onDone: () => void }) {
       ))}
       <Textarea placeholder="Tell us more (optional)" aria-label="Tell us more (optional)" />
       <ActionRow>
-        <Button onClick={onDone}>Send feedback</Button>
-        <Button variant="outline" onClick={onDone}>
+        <Button onClick={onSend}>Send feedback</Button>
+        <Button variant="outline" onClick={onSkip}>
           Skip
         </Button>
       </ActionRow>
     </fieldset>
+  )
+}
+
+/** No result (both reasons), after "Yes". */
+function ExpectationForm({ onSend, onSkip }: { onSend: () => void; onSkip: () => void }) {
+  const id = React.useId()
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={id}>What did you expect the check to find?</Label>
+      <Input id={id} autoFocus placeholder="Describe what you expected" />
+      <ActionRow>
+        <Button onClick={onSend}>Send feedback</Button>
+        <Button variant="outline" onClick={onSkip}>
+          Skip
+        </Button>
+      </ActionRow>
+    </div>
+  )
+}
+
+/** Feedback for high and low confidence: Yes acknowledges, No opens the "What was wrong?" form. */
+function ConfidenceFeedback({ view, question, set }: { view: ResultView; question: string; set: (p: Partial<ResultView>) => void }) {
+  if (view.feedback === "thanks") return <FeedbackAck />
+  if (view.mode === "feedback_no")
+    return <FeedbackForm onSend={() => set({ mode: undefined, feedback: "thanks" })} onSkip={() => set({ mode: undefined })} />
+  return <FeedbackRow question={question} onYes={() => set({ feedback: "thanks" })} onNo={() => set({ mode: "feedback_no" })} />
+}
+
+/** Feedback for No result: Yes opens the expectation form, No acknowledges. */
+function NoResultFeedback({ view, set }: { view: ResultView; set: (p: Partial<ResultView>) => void }) {
+  if (view.feedback === "thanks") return <FeedbackAck />
+  if (view.feedback === "form")
+    return <ExpectationForm onSend={() => set({ feedback: "thanks" })} onSkip={() => set({ feedback: undefined })} />
+  return (
+    <FeedbackRow
+      question="Did you expect a finding here?"
+      onYes={() => set({ feedback: "form" })}
+      onNo={() => set({ feedback: "thanks" })}
+    />
   )
 }
 
@@ -340,14 +385,8 @@ function HighConfidence({ view, payload: p, pinned, onViewChange, onFlag, onKeep
           Keep product values
         </Button>
       </ActionRow>
-      {view.mode === "feedback_no" ? (
-        <FeedbackForm onDone={() => set({ mode: undefined })} />
-      ) : (
-        <>
-          <FeedbackRow question="Were these findings useful?" onNo={() => set({ mode: "feedback_no" })} />
-          <Footnote>Nothing changes until you choose an action.</Footnote>
-        </>
-      )}
+      <ConfidenceFeedback view={view} question="Were these findings useful?" set={set} />
+      {view.mode !== "feedback_no" && <Footnote>Nothing changes until you choose an action.</Footnote>}
     </>
   )
 
@@ -414,14 +453,8 @@ function LowConfidence({ view, payload: p, pinned, onViewChange, onShowSource, o
           </Button>
         </ActionRow>
       )}
-      {view.mode === "feedback_no" ? (
-        <FeedbackForm onDone={() => set({ mode: undefined })} />
-      ) : (
-        <>
-          <FeedbackRow question="Was this result useful?" onNo={() => set({ mode: "feedback_no" })} />
-          <Footnote>Nothing changes until you choose an action.</Footnote>
-        </>
-      )}
+      <ConfidenceFeedback view={view} question="Was this result useful?" set={set} />
+      {view.mode !== "feedback_no" && <Footnote>Nothing changes until you choose an action.</Footnote>}
     </>
   )
 
@@ -478,7 +511,7 @@ function NoDocumentsLinked({ view, payload: p, onViewChange }: ResultProps) {
           </ul>
         </div>
       )}
-      <FeedbackRow question="Did you expect a finding here?" onNo={() => {}} />
+      <NoResultFeedback view={view} set={(patch) => onViewChange({ ...view, ...patch })} />
     </AiCard>
   )
 }
@@ -508,7 +541,7 @@ function NotReadable({ view, payload: p, onViewChange, onShowSource, onUpload, o
           </Button>
         </ActionRow>
       )}
-      <FeedbackRow question="Did you expect a finding here?" onNo={() => {}} />
+      <NoResultFeedback view={view} set={(patch) => onViewChange({ ...view, ...patch })} />
     </AiCard>
   )
 }

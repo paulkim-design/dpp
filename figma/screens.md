@@ -79,6 +79,10 @@ Notes:
 - Tall result states (High, Low, Feedback no both, Sample result, Low manual entry, Long output) are 796 px high: scroll area plus pinned foot with actions.
 - Sources render per payload source: document name, "Valid until" line only when valid_until is set, and "View source" with that source's pages.
 
+## Approve hint and highlight (latest)
+- Info button (component "Info button", ghost, lucide info) next to every disabled Approve; the hint is the "Tooltip" component, shown on screen 05 as the hover/focus example.
+- Version is plain muted text. Cited text highlight token is #C6FAF6.
+
 ## Open points
 - differences[].pages is not shown next to each certificate value (brief section 3 asks for a page reference, but section 6 has no copy for it).
 - Waiting on screen 18 (sample, 1 document) shares the 67% bar of the Waiting state.

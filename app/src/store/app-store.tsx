@@ -11,6 +11,8 @@ export type PanelView =
       expanded?: boolean
       /** Feedback no form or manual entry replaces part of the card */
       mode?: "feedback_no" | "manual"
+      /** No result expectation form, or the acknowledgement after a completed answer */
+      feedback?: "form" | "thanks"
     }
   | { kind: "cold_start" }
   | {
