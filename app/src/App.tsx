@@ -10,7 +10,7 @@ export default function App() {
   return (
     <AppStoreProvider>
       <TooltipProvider>
-        <BrowserRouter>
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/sets/ss27-m-urban-jungle" element={<ListViewPage />} />
